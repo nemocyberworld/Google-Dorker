@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Google Dorker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center p-6">
+
+  <h1 class="text-4xl font-extrabold mb-6 text-center">🔍 Google Dorker</h1>
+
+  <p class="mb-4 max-w-xl text-center text-gray-400">
+    Enter a target domain or subdomain (e.g. <code>example.com</code>) and generate Google dorks for recon. Progress is saved automatically!
+  </p>
+
+  <div class="w-full max-w-xl flex flex-col sm:flex-row gap-3 mb-6">
+    <input
+      id="domainInput"
+      type="text"
+      placeholder="Enter target domain (e.g. example.com)"
+      class="flex-grow p-3 rounded-md text-black outline-none focus:ring-2 focus:ring-blue-500"
+    />
+    <button
+      id="generateBtn"
+      class="px-6 py-3 bg-blue-600 rounded-md hover:bg-blue-700 transition"
+    >
+      Generate
+    </button>
+  </div>
+
+  <div class="mb-4">
+    <button id="clearBtn" class="px-4 py-2 bg-red-600 rounded hover:bg-red-700 text-sm">
+      🧹 Clear Progress
+    </button>
+  </div>
+
+  <div id="result" class="w-full max-w-xl space-y-3"></div>
+
+<footer class="mt-auto text-gray-600 text-sm mt-12 text-center">
+  Made with ❤️ by H4K2LIV3 Academy | <a href="https://hacktolive.net" class="text-blue-400 hover:underline" target="_blank">Visit Us</a>
+</footer>
+
+
+  <script>
+    const dorks = [
+  'site:{domain} intitle:"index of"',
+  'site:{domain} inurl:admin',
+  'site:{domain} filetype:env',
+  'site:{domain} intext:"password"',
+  'site:{domain} inurl:login',
+  'site:{domain} ext:sql',
+  'site:{domain} ext:log',
+  'site:{domain} ext:conf',
+  'site:{domain} inurl:"php?id="',
+  'site:{domain} intitle:"login page"',
+  'site:{domain} inurl:"/config"',
+  'site:{domain} inurl:"/backup"',
+  'site:{domain} "sql syntax near"',
+  'site:{domain} "Warning: mysql_"',
+  'site:{domain} "Fatal error"',
+  'site:{domain} "Index of /"',
+  'site:{domain} inurl:"/shell"',
+  'site:{domain} intitle:"Dashboard"',
+  'site:{domain} "internal only"',
+  'site:{domain} "confidential"',
+  'site:{domain} filetype:log',
+  'site:{domain} filetype:conf',
+  'site:{domain} filetype:ini',
+  'site:{domain} filetype:db',
+  'site:{domain} filetype:bak',
+  'site:{domain} filetype:backup',
+  'site:{domain} filetype:json',
+  'site:{domain} filetype:xml',
+  'site:{domain} filetype:sql',
+  'site:{domain} filetype:env',
+  'site:{domain} intext:"credentials"',
+  'site:{domain} intext:"secrets"',
+  'site:{domain} intext:"apikey"',
+  'site:{domain} intext:"token"',
+  'site:{domain} intext:"private key"',
+  'site:{domain} inurl:cpanel',
+  'site:{domain} inurl:dashboard',
+  'site:{domain} inurl:portal',
+  'site:{domain} inurl:internal',
+  'site:{domain} inurl:ftp',
+  'site:{domain} inurl:dev',
+  'site:{domain} inurl:test',
+  'site:{domain} "Authorization: Basic"',
+  'site:{domain} "X-Powered-By: PHP"',
+  'site:{domain} "set-cookie"',
+  'site:{domain} "PHPSESSID"',
+  'site:{domain} intext:"mysql_fetch_array()"',
+  'site:{domain} intext:"You have an error in your SQL syntax"',
+  'site:{domain} intext:"ORA-00933"',
+  'site:{domain} intext:"Syntax error"',
+  'site:{domain} intext:"Warning:"',
+  'site:{domain} intext:"Notice:"',
+  'site:{domain} intext:"Fatal error"',
+  'site:{domain} inurl:signin',
+  'site:{domain} inurl:auth',
+  'site:{domain} inurl:user',
+  'site:{domain} intitle:"signin"',
+  'site:{domain} intitle:"auth"',
+  'site:{domain} intitle:"user"',
+  'site:{domain} intitle:"control panel"',
+  'site:{domain} "site administration"',
+  'site:{domain} "Restricted Area"',
+  'site:{domain} intitle:"Welcome to nginx!"',
+  'site:{domain} intitle:"Apache2 Ubuntu Default Page"',
+  'site:{domain} intitle:"Setup"',
+  'site:{domain} intitle:"Configuration"',
+  'site:{domain} "Database error"',
+  'site:{domain} "Unexpected token"',
+  'site:{domain} intitle:"phpinfo()"',
+  'site:{domain} "connect.php"',
+  'site:{domain} "db_connect"',
+  'site:{domain} intitle:"webmail"',
+  'site:{domain} "web.config"',
+  'site:{domain} filetype:htpasswd',
+  'site:{domain} filetype:htaccess',
+  'site:{domain} "root:x"',
+  'site:{domain} "admin login"',
+  'site:{domain} "site backup"',
+  'site:{domain} intitle:"view source"',
+  'site:{domain} inurl:debug',
+  'site:{domain} inurl:trace',
+  'site:{domain} inurl:dump',
+  'site:{domain} "test environment"',
+  'site:{domain} "Do not distribute"',
+  'site:{domain} "for development purposes only"',
+  'site:{domain} "NOT FOR PUBLIC RELEASE"',
+  'site:{domain} "do not disclose"',
+  'site:{domain} "confidential information"',
+  'site:{domain} "sensitive data"',
+  'site:{domain} inurl:dev',
+  'site:{domain} inurl:staging',
+  'site:{domain} inurl:debug',
+  'site:{domain} inurl:error',
+  'site:{domain} inurl:trace',
+  'site:{domain} inurl:upload',
+  'site:{domain} inurl:download',
+  'site:{domain} inurl:git',
+  'site:{domain} inurl:svn',
+  'site:{domain} inurl:repo',
+  'site:{domain} inurl:.git',
+  'site:{domain} intitle:"git repository"',
+  'site:{domain} intitle:"svn repository"',
+  'site:{domain} "DATABASE_URL"',
+  'site:{domain} "MAIL_HOST"',
+  'site:{domain} "MAIL_PASSWORD"',
+  'site:{domain} "APP_SECRET"',
+  'site:{domain} "AWS_SECRET_ACCESS_KEY"',
+  'site:{domain} "AWS_ACCESS_KEY_ID"',
+  'site:{domain} "Authorization"',
+  'site:{domain} "Bearer token"',
+  'site:{domain} "jwt token"',
+  'site:{domain} "api_key"',
+  'site:{domain} "secret_key"',
+  'site:{domain} "client_secret"',
+  'site:{domain} "credentials.json"',
+  'site:{domain} "config.json"',
+  'site:{domain} "docker-compose.yml"',
+  'site:{domain} "kubeconfig"',
+  'site:{domain} filetype:bak',
+  'site:{domain} filetype:old',
+  'site:{domain} filetype:backup',
+  'site:{domain} filetype:swp',
+  'site:{domain} filetype:tmp',
+  'site:{domain} "index of /admin"',
+  'site:{domain} "index of /backup"',
+  'site:{domain} "index of /uploads"',
+  'site:{domain} "index of /db"',
+  'site:{domain} "index of /files"',
+  'site:{domain} "index of /conf"',
+  'site:{domain} "index of /env"',
+  'site:{domain} "index of /logs"',
+  'site:{domain} inurl:readme',
+  'site:{domain} intitle:"readme"',
+  'site:{domain} intitle:"to-do"',
+  'site:{domain} intitle:"changelog"',
+  'site:{domain} intitle:"bugtracker"',
+  'site:{domain} intitle:"issue tracker"',
+  'site:{domain} intitle:"gitlab"',
+  'site:{domain} intitle:"jenkins"',
+  'site:{domain} intitle:"kibana"',
+  'site:{domain} intitle:"grafana"',
+  'site:{domain} intitle:"dashboard"',
+  'site:{domain} intitle:"login"',
+  'site:{domain} intitle:"signin"',
+  'site:{domain} inurl:panel',
+  'site:{domain} inurl:manage',
+  'site:{domain} inurl:control',
+  'site:{domain} intitle:"remote access"',
+  'site:{domain} intitle:"vpn login"',
+  'site:{domain} intitle:"ssh login"',
+  'site:{domain} intitle:"radmin"',
+  'site:{domain} intitle:"vnc viewer"',
+  'site:{domain} intitle:"Apache Status"',
+  'site:{domain} intitle:"Tomcat Manager"',
+  'site:{domain} intitle:"Jenkins Dashboard"',
+  'site:{domain} intitle:"Development Server"',
+  'site:{domain} intitle:"Open Redirect"',
+  'site:{domain} inurl:"redirect="',
+  'site:{domain} inurl:"url="',
+  'site:{domain} inurl:"next="',
+  'site:{domain} inurl:"data="',
+  'site:{domain} "parameter tampering"',
+  'site:{domain} inurl:report',
+  'site:{domain} "vulnerability report"',
+  'site:{domain} "leak"',
+  'site:{domain} "exposed"',
+  'site:{domain} "intitle:config file"',
+  'site:{domain} "intitle:settings"',
+  'site:{domain} "intitle:admin settings"',
+  'site:{domain} "intitle:internal config"',
+  'site:{domain} intitle:"documentation"',
+  'site:{domain} intitle:"api reference"',
+  'site:{domain} intitle:"api docs"',
+  'site:{domain} intitle:"REST API"',
+  'site:{domain} "production environment"',
+  'site:{domain} "sandbox"',
+  'site:{domain} "test API"',
+  'site:{domain} "admin panel"',
+  'site:{domain} "site panel"',
+  'site:{domain} "management console"',
+  'site:{domain} "Monitoring Dashboard"',
+];
+
+
+    const domainInput = document.getElementById('domainInput');
+    const generateBtn = document.getElementById('generateBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const resultDiv = document.getElementById('result');
+
+    const STORAGE_KEY = "google_dorker_data";
+
+    // Save progress to localStorage
+    function saveProgress(data) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    // Load saved progress
+    function loadProgress() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : null;
+    }
+
+    // Render dork list
+    function renderDorks(domain, savedStates = {}) {
+      resultDiv.innerHTML = '';
+
+      dorks.forEach((template, index) => {
+        const dork = template.replace('{domain}', domain);
+        const url = `https://www.google.com/search?q=${encodeURIComponent(dork)}`;
+        const checked = savedStates[dork]?.checked || false;
+
+        const container = document.createElement('div');
+        container.className = 'flex items-center justify-between p-3 bg-gray-800 rounded hover:bg-gray-700 transition';
+
+        const left = document.createElement('div');
+        left.className = 'flex items-center gap-2 flex-grow break-words';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = checked;
+        checkbox.className = 'form-checkbox h-4 w-4 text-blue-600';
+        checkbox.addEventListener('change', () => {
+          savedStates[dork] = { checked: checkbox.checked };
+          saveProgress({ domain, states: savedStates });
+        });
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = dork;
+        link.className = 'text-blue-400 hover:underline flex-grow';
+
+        const copyBtn = document.createElement('button');
+        copyBtn.textContent = 'Copy';
+        copyBtn.className = 'ml-3 px-2 py-1 bg-blue-600 rounded hover:bg-blue-700 text-sm';
+        copyBtn.addEventListener('click', () => {
+          navigator.clipboard.writeText(dork).then(() => {
+            copyBtn.textContent = 'Copied!';
+            setTimeout(() => (copyBtn.textContent = 'Copy'), 1500);
+          });
+        });
+
+        left.appendChild(checkbox);
+        left.appendChild(link);
+
+        container.appendChild(left);
+        container.appendChild(copyBtn);
+        resultDiv.appendChild(container);
+      });
+    }
+
+    // Generate new dorks
+    generateBtn.addEventListener('click', () => {
+      const domain = domainInput.value.trim();
+      if (!domain) {
+        alert('Please enter a domain or subdomain!');
+        return;
+      }
+
+      const states = {};
+      saveProgress({ domain, states });
+      renderDorks(domain, states);
+    });
+
+    // Clear button
+    clearBtn.addEventListener('click', () => {
+      localStorage.removeItem(STORAGE_KEY);
+      resultDiv.innerHTML = '';
+      domainInput.value = '';
+    });
+
+    // Load on page load
+    window.addEventListener('load', () => {
+      const saved = loadProgress();
+      if (saved?.domain) {
+        domainInput.value = saved.domain;
+        renderDorks(saved.domain, saved.states || {});
+      }
+    });
+
+    // Support Enter key
+    domainInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') generateBtn.click();
+    });
+  </script>
+
+</body>
+</html>
