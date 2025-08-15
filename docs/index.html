@@ -1,335 +1,702 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Google Dorker</title>
+  <title>🔍 Google Dorker</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <meta name="description" content="Browse dork files from /dorks, build site-scoped queries, and open searches manually. No scraping." />
+  <style>
+    .truncate-2 { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center p-6">
-
-  <h1 class="text-4xl font-extrabold mb-6 text-center">🔍 Google Dorker</h1>
-
-  <p class="mb-4 max-w-xl text-center text-gray-400">
-    Enter a target domain or subdomain (e.g. <code>example.com</code>) and generate Google dorks for recon. Progress is saved automatically!
-  </p>
-
-  <div class="w-full max-w-xl flex flex-col sm:flex-row gap-3 mb-6">
-    <input
-      id="domainInput"
-      type="text"
-      placeholder="Enter target domain (e.g. example.com)"
-      class="flex-grow p-3 rounded-md text-black outline-none focus:ring-2 focus:ring-blue-500"
-    />
-    <button
-      id="generateBtn"
-      class="px-6 py-3 bg-blue-600 rounded-md hover:bg-blue-700 transition"
-    >
-      Generate
-    </button>
+<body class="min-h-screen bg-slate-50 text-slate-900">
+<header class="sticky top-0 z-10 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b border-slate-200 shadow-sm">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col items-center text-center">
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+      🔍 Google Dorker
+    </h1>
+    <p class="mt-1 text-sm text-slate-500">
+      Powered by <a href="https://hacktolive.net" target="_blank" rel="noopener" class="text-indigo-600 hover:underline">HackToLive Academy</a>
+    </p>
   </div>
+</header>
 
-  <div class="mb-4">
-    <button id="clearBtn" class="px-4 py-2 bg-red-600 rounded hover:bg-red-700 text-sm">
-      🧹 Clear Progress
-    </button>
-  </div>
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Column 1: Files -->
+    <section class="lg:col-span-1">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="p-4 border-b border-slate-200 flex items-center gap-2">
+          <span class="font-medium">Dork files</span>
+          <span id="fileCount" class="ml-auto text-xs text-slate-500">0</span>
+        </div>
+        <div class="p-3">
+          <p class="text-xs text-slate-500 mb-3">
+            Auto-loads <code>dorks/manifest.json</code> on GitHub Pages.
+            If you open this file from your disk (<code>file://</code>), fetching won’t work due to browser security.
+          </p>
 
-  <div id="result" class="w-full max-w-xl space-y-3"></div>
+          <div class="flex gap-2 mb-3">
+            <button id="loadLocal" class="px-3 py-2 rounded-lg bg-slate-800 text-white text-sm hover:bg-slate-700">Reload Local (manifest)</button>
+            <label class="px-3 py-2 rounded-lg border border-dashed border-slate-300 text-sm cursor-pointer hover:bg-slate-50">
+              <input id="fileInput" type="file" class="hidden" multiple accept=".dorks,.txt" />Add files…
+            </label>
+          </div>
 
-<footer class="mt-auto text-gray-600 text-sm mt-12 text-center">
-  Made with ❤️ by H4K2LIV3 Academy | <a href="https://hacktolive.net" class="text-blue-400 hover:underline" target="_blank">Visit Us</a>
-</footer>
+          <div class="flex gap-2 mb-3">
+            <input id="owner" type="text" placeholder="github owner (optional)" class="w-1/2 px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+            <input id="repo" type="text" placeholder="repo name (optional)" class="w-1/2 px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+          </div>
+          <div class="flex gap-2 mb-3">
+            <input id="branch" type="text" placeholder="branch (default: main)" class="w-1/2 px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+            <button id="loadGh" class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-500">Load from GitHub</button>
+          </div>
 
+          <ul id="fileList" class="space-y-1 max-h-[50vh] overflow-auto pr-1"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Column 2: Dorks -->
+    <section class="lg:col-span-1">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="p-4 border-b border-slate-200 flex flex-wrap items-center gap-2">
+          <input id="search" type="text" placeholder="Filter dorks (regex or text)…" class="flex-1 min-w-[220px] px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+          <select id="statusFilter" class="px-3 py-2 rounded-lg border border-slate-300 text-sm">
+            <option value="all">All</option>
+            <option value="todo">To-do</option>
+            <option value="done">Done</option>
+          </select>
+          <div class="ml-auto flex items-center gap-2 text-xs">
+            <span id="progressBadge" class="px-2 py-1 rounded-full bg-slate-100 border border-slate-200">0/0 done</span>
+            <button id="markVisibleDone" class="px-2 py-1 rounded-lg border border-slate-300 hover:bg-slate-50">Mark visible ✓</button>
+            <button id="markVisibleTodo" class="px-2 py-1 rounded-lg border border-slate-300 hover:bg-slate-50">Uncheck visible</button>
+          </div>
+        </div>
+        <div id="dorkList" class="divide-y divide-slate-100 max-h-[65vh] overflow-auto"></div>
+      </div>
+    </section>
+
+    <!-- Column 3: Builder + Embedded Google Dorker (fixed-height, scrollable) -->
+    <aside class="lg:col-span-1 space-y-6">
+      <!-- Existing Builder -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="p-4 border-b border-slate-200 flex items-center gap-2">
+          <span class="font-medium">Build a query</span>
+        </div>
+        <div class="p-4 space-y-3">
+          <label class="block text-sm">Domain scope (optional)</label>
+          <input id="domain" type="text" placeholder="example.com" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+
+          <div class="text-xs text-slate-500">Click a dork to preview + open search.</div>
+
+          <div id="previewCard" class="hidden border border-slate-200 rounded-xl p-3">
+            <div class="text-xs uppercase tracking-wide text-slate-500">Preview</div>
+            <pre id="previewQuery" class="mt-2 p-2 bg-slate-50 rounded text-sm whitespace-pre-wrap"></pre>
+            <div class="flex gap-2 mt-3">
+              <a id="openGoogle" target="_blank" rel="noopener" class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-500">Open Google</a>
+              <a id="openBing" target="_blank" rel="noopener" class="px-3 py-2 rounded-lg bg-slate-800 text-white text-sm hover:bg-slate-700">Open Bing</a>
+            </div>
+          </div>
+
+          <div class="mt-4 text-xs text-slate-500 space-y-2">
+            <p><strong>Manual review required:</strong> this tool assembles queries and opens them in your browser. It does <em>not</em> scrape results.</p>
+            <p>Host on GitHub Pages so the browser can fetch <code>dorks/*.dorks</code> via HTTPS.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Embedded Google Dorker (light theme, fixed size card) -->
+      <div class="bg-white text-slate-900 rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <!-- Fixed header area -->
+        <div class="p-4 border-b border-slate-200">
+          <h2 class="text-lg font-semibold">Generate 200 most usefull dorks</h2>
+          <p class="mt-1 text-xs text-slate-500">
+            Enter a target domain and generate Google dorks for recon. Progress is saved automatically.
+          </p>
+
+          <div class="mt-3 flex flex-col sm:flex-row gap-2">
+            <input
+              id="domainInput"
+              type="text"
+              placeholder="Enter target domain (e.g. example.com)"
+              class="flex-grow px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm bg-white"
+            />
+            <button
+              id="generateBtn"
+              class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-500"
+            >
+              Generate
+            </button>
+            <button
+              id="clearBtn"
+              class="px-4 py-2 rounded-lg border border-slate-300 text-sm hover:bg-slate-50"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+
+        <!-- Fixed-height body with internal scroll -->
+        <div class="h-[420px] flex flex-col">
+          <!-- Results list -->
+          <div id="result" class="flex-1 overflow-y-auto p-3 space-y-2">
+            <!-- rows are injected here -->
+          </div>
+
+          <!-- Footer -->
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10 text-xs text-slate-500">
+    <div class="mt-6">Tip: Provide <code>dorks/manifest.json</code> (array of filenames). Example below.</div>
+    <pre class="bg-slate-100 p-3 rounded mt-2 overflow-auto"><code>[
+  "advisories_and_vulnerabilities.dorks",
+  "network_or_vulnerability_data.dorks",
+  "pages_containing_login_portals.dorks",
+  "sensitive_directories.dorks",
+  "sensitive_online_shopping_info.dorks",
+  "error_messages.dorks",
+  "files_containing_juicy_info.dorks",
+  "files_containing_passwords.dorks",
+  "files_containing_usernames.dorks",
+  "footholds.dorks",
+  "various_online_devices.dorks",
+  "vulnerable_files.dorks",
+  "vulnerable_servers.dorks",
+  "web_server_detection.dorks"
+]</code></pre>
+  </footer>
 
   <script>
-    const dorks = [
-  'site:{domain} intitle:"index of"',
-  'site:{domain} inurl:admin',
-  'site:{domain} filetype:env',
-  'site:{domain} intext:"password"',
-  'site:{domain} inurl:login',
-  'site:{domain} ext:sql',
-  'site:{domain} ext:log',
-  'site:{domain} ext:conf',
-  'site:{domain} inurl:"php?id="',
-  'site:{domain} intitle:"login page"',
-  'site:{domain} inurl:"/config"',
-  'site:{domain} inurl:"/backup"',
-  'site:{domain} "sql syntax near"',
-  'site:{domain} "Warning: mysql_"',
-  'site:{domain} "Fatal error"',
-  'site:{domain} "Index of /"',
-  'site:{domain} inurl:"/shell"',
-  'site:{domain} intitle:"Dashboard"',
-  'site:{domain} "internal only"',
-  'site:{domain} "confidential"',
-  'site:{domain} filetype:log',
-  'site:{domain} filetype:conf',
-  'site:{domain} filetype:ini',
-  'site:{domain} filetype:db',
-  'site:{domain} filetype:bak',
-  'site:{domain} filetype:backup',
-  'site:{domain} filetype:json',
-  'site:{domain} filetype:xml',
-  'site:{domain} filetype:sql',
-  'site:{domain} filetype:env',
-  'site:{domain} intext:"credentials"',
-  'site:{domain} intext:"secrets"',
-  'site:{domain} intext:"apikey"',
-  'site:{domain} intext:"token"',
-  'site:{domain} intext:"private key"',
-  'site:{domain} inurl:cpanel',
-  'site:{domain} inurl:dashboard',
-  'site:{domain} inurl:portal',
-  'site:{domain} inurl:internal',
-  'site:{domain} inurl:ftp',
-  'site:{domain} inurl:dev',
-  'site:{domain} inurl:test',
-  'site:{domain} "Authorization: Basic"',
-  'site:{domain} "X-Powered-By: PHP"',
-  'site:{domain} "set-cookie"',
-  'site:{domain} "PHPSESSID"',
-  'site:{domain} intext:"mysql_fetch_array()"',
-  'site:{domain} intext:"You have an error in your SQL syntax"',
-  'site:{domain} intext:"ORA-00933"',
-  'site:{domain} intext:"Syntax error"',
-  'site:{domain} intext:"Warning:"',
-  'site:{domain} intext:"Notice:"',
-  'site:{domain} intext:"Fatal error"',
-  'site:{domain} inurl:signin',
-  'site:{domain} inurl:auth',
-  'site:{domain} inurl:user',
-  'site:{domain} intitle:"signin"',
-  'site:{domain} intitle:"auth"',
-  'site:{domain} intitle:"user"',
-  'site:{domain} intitle:"control panel"',
-  'site:{domain} "site administration"',
-  'site:{domain} "Restricted Area"',
-  'site:{domain} intitle:"Welcome to nginx!"',
-  'site:{domain} intitle:"Apache2 Ubuntu Default Page"',
-  'site:{domain} intitle:"Setup"',
-  'site:{domain} intitle:"Configuration"',
-  'site:{domain} "Database error"',
-  'site:{domain} "Unexpected token"',
-  'site:{domain} intitle:"phpinfo()"',
-  'site:{domain} "connect.php"',
-  'site:{domain} "db_connect"',
-  'site:{domain} intitle:"webmail"',
-  'site:{domain} "web.config"',
-  'site:{domain} filetype:htpasswd',
-  'site:{domain} filetype:htaccess',
-  'site:{domain} "root:x"',
-  'site:{domain} "admin login"',
-  'site:{domain} "site backup"',
-  'site:{domain} intitle:"view source"',
-  'site:{domain} inurl:debug',
-  'site:{domain} inurl:trace',
-  'site:{domain} inurl:dump',
-  'site:{domain} "test environment"',
-  'site:{domain} "Do not distribute"',
-  'site:{domain} "for development purposes only"',
-  'site:{domain} "NOT FOR PUBLIC RELEASE"',
-  'site:{domain} "do not disclose"',
-  'site:{domain} "confidential information"',
-  'site:{domain} "sensitive data"',
-  'site:{domain} inurl:dev',
-  'site:{domain} inurl:staging',
-  'site:{domain} inurl:debug',
-  'site:{domain} inurl:error',
-  'site:{domain} inurl:trace',
-  'site:{domain} inurl:upload',
-  'site:{domain} inurl:download',
-  'site:{domain} inurl:git',
-  'site:{domain} inurl:svn',
-  'site:{domain} inurl:repo',
-  'site:{domain} inurl:.git',
-  'site:{domain} intitle:"git repository"',
-  'site:{domain} intitle:"svn repository"',
-  'site:{domain} "DATABASE_URL"',
-  'site:{domain} "MAIL_HOST"',
-  'site:{domain} "MAIL_PASSWORD"',
-  'site:{domain} "APP_SECRET"',
-  'site:{domain} "AWS_SECRET_ACCESS_KEY"',
-  'site:{domain} "AWS_ACCESS_KEY_ID"',
-  'site:{domain} "Authorization"',
-  'site:{domain} "Bearer token"',
-  'site:{domain} "jwt token"',
-  'site:{domain} "api_key"',
-  'site:{domain} "secret_key"',
-  'site:{domain} "client_secret"',
-  'site:{domain} "credentials.json"',
-  'site:{domain} "config.json"',
-  'site:{domain} "docker-compose.yml"',
-  'site:{domain} "kubeconfig"',
-  'site:{domain} filetype:bak',
-  'site:{domain} filetype:old',
-  'site:{domain} filetype:backup',
-  'site:{domain} filetype:swp',
-  'site:{domain} filetype:tmp',
-  'site:{domain} "index of /admin"',
-  'site:{domain} "index of /backup"',
-  'site:{domain} "index of /uploads"',
-  'site:{domain} "index of /db"',
-  'site:{domain} "index of /files"',
-  'site:{domain} "index of /conf"',
-  'site:{domain} "index of /env"',
-  'site:{domain} "index of /logs"',
-  'site:{domain} inurl:readme',
-  'site:{domain} intitle:"readme"',
-  'site:{domain} intitle:"to-do"',
-  'site:{domain} intitle:"changelog"',
-  'site:{domain} intitle:"bugtracker"',
-  'site:{domain} intitle:"issue tracker"',
-  'site:{domain} intitle:"gitlab"',
-  'site:{domain} intitle:"jenkins"',
-  'site:{domain} intitle:"kibana"',
-  'site:{domain} intitle:"grafana"',
-  'site:{domain} intitle:"dashboard"',
-  'site:{domain} intitle:"login"',
-  'site:{domain} intitle:"signin"',
-  'site:{domain} inurl:panel',
-  'site:{domain} inurl:manage',
-  'site:{domain} inurl:control',
-  'site:{domain} intitle:"remote access"',
-  'site:{domain} intitle:"vpn login"',
-  'site:{domain} intitle:"ssh login"',
-  'site:{domain} intitle:"radmin"',
-  'site:{domain} intitle:"vnc viewer"',
-  'site:{domain} intitle:"Apache Status"',
-  'site:{domain} intitle:"Tomcat Manager"',
-  'site:{domain} intitle:"Jenkins Dashboard"',
-  'site:{domain} intitle:"Development Server"',
-  'site:{domain} intitle:"Open Redirect"',
-  'site:{domain} inurl:"redirect="',
-  'site:{domain} inurl:"url="',
-  'site:{domain} inurl:"next="',
-  'site:{domain} inurl:"data="',
-  'site:{domain} "parameter tampering"',
-  'site:{domain} inurl:report',
-  'site:{domain} "vulnerability report"',
-  'site:{domain} "leak"',
-  'site:{domain} "exposed"',
-  'site:{domain} "intitle:config file"',
-  'site:{domain} "intitle:settings"',
-  'site:{domain} "intitle:admin settings"',
-  'site:{domain} "intitle:internal config"',
-  'site:{domain} intitle:"documentation"',
-  'site:{domain} intitle:"api reference"',
-  'site:{domain} intitle:"api docs"',
-  'site:{domain} intitle:"REST API"',
-  'site:{domain} "production environment"',
-  'site:{domain} "sandbox"',
-  'site:{domain} "test API"',
-  'site:{domain} "admin panel"',
-  'site:{domain} "site panel"',
-  'site:{domain} "management console"',
-  'site:{domain} "Monitoring Dashboard"',
-];
+    // ---------- Elements ----------
+    const byId = (id) => document.getElementById(id);
+    const fileListEl = byId('fileList');
+    const dorkListEl = byId('dorkList');
+    const fileCountEl = byId('fileCount');
+    const searchEl = byId('search');
+    const statusFilterEl = byId('statusFilter');
+    const progressBadge = byId('progressBadge');
+    const markVisibleDoneBtn = byId('markVisibleDone');
+    const markVisibleTodoBtn = byId('markVisibleTodo');
+    const domainEl = byId('domain');
+    const previewCard = byId('previewCard');
+    const previewQuery = byId('previewQuery');
+    const openGoogle = byId('openGoogle');
+    const openBing = byId('openBing');
 
+    const LS_KEY = 'dork_browser_checked_v1';
 
-    const domainInput = document.getElementById('domainInput');
-    const generateBtn = document.getElementById('generateBtn');
-    const clearBtn = document.getElementById('clearBtn');
-    const resultDiv = document.getElementById('result');
+    // ---------- State ----------
+    const state = {
+      files: [],    // {name, source, content}
+      dorks: [],    // {file, line, text, id}
+      filtered: [],
+      selected: null,
+      checked: loadChecked(), // id->true
+    };
 
-    const STORAGE_KEY = "google_dorker_data";
+    function saveChecked(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state.checked)); }catch{} }
+    function loadChecked(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)||'{}'); }catch{ return {}; } }
+    const idFor = (d) => `${d.file}::${d.line}::${d.text}`;
 
-    // Save progress to localStorage
-    function saveProgress(data) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    // ---------- Filters / Progress ----------
+    function filterDorks(query){
+      let pool = state.dorks;
+      const mode = statusFilterEl.value || 'all';
+      if(mode !== 'all'){
+        const wantDone = (mode === 'done');
+        pool = pool.filter(d => Boolean(state.checked[d.id]) === wantDone);
+      }
+      if(!query){ state.filtered = pool; updateProgress(); return; }
+      try{
+        const rx = new RegExp(query, 'i');
+        state.filtered = pool.filter(d => rx.test(d.text));
+      }catch{
+        const q = query.toLowerCase();
+        state.filtered = pool.filter(d => d.text.toLowerCase().includes(q));
+      }
+      updateProgress();
+    }
+    function updateProgress(){
+      const total = state.dorks.length;
+      const done = state.dorks.reduce((n,d)=> n + (state.checked[d.id]?1:0), 0);
+      progressBadge.textContent = `${done}/${total} done`;
     }
 
-    // Load saved progress
-    function loadProgress() {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? JSON.parse(saved) : null;
-    }
-
-    // Render dork list
-    function renderDorks(domain, savedStates = {}) {
-      resultDiv.innerHTML = '';
-
-      dorks.forEach((template, index) => {
-        const dork = template.replace('{domain}', domain);
-        const url = `https://www.google.com/search?q=${encodeURIComponent(dork)}`;
-        const checked = savedStates[dork]?.checked || false;
-
-        const container = document.createElement('div');
-        container.className = 'flex items-center justify-between p-3 bg-gray-800 rounded hover:bg-gray-700 transition';
-
-        const left = document.createElement('div');
-        left.className = 'flex items-center gap-2 flex-grow break-words';
-
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.checked = checked;
-        checkbox.className = 'form-checkbox h-4 w-4 text-blue-600';
-        checkbox.addEventListener('change', () => {
-          savedStates[dork] = { checked: checkbox.checked };
-          saveProgress({ domain, states: savedStates });
+    // ---------- Rendering ----------
+    function renderFiles(){
+      fileCountEl.textContent = String(state.files.length);
+      fileListEl.innerHTML = '';
+      state.files.forEach((f, idx) => {
+        const li = document.createElement('li');
+        li.className = 'flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-50';
+        li.innerHTML = `
+          <span class="text-xs px-2 py-0.5 rounded bg-slate-100 border border-slate-200">${f.source}</span>
+          <button class="text-left flex-1 text-sm truncate" title="${f.name}">${f.name}</button>
+          <button class="text-xs text-rose-600 hover:underline">remove</button>`;
+        const [tag, openBtn, remBtn] = li.children;
+        openBtn.addEventListener('click', () => {
+          searchEl.value = '';
+          statusFilterEl.value = 'all';
+          state.filtered = state.dorks.filter(d => d.file === f.name);
+          renderDorks();
         });
-
-        const link = document.createElement('a');
-        link.href = url;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        link.textContent = dork;
-        link.className = 'text-blue-400 hover:underline flex-grow';
-
-        const copyBtn = document.createElement('button');
-        copyBtn.textContent = 'Copy';
-        copyBtn.className = 'ml-3 px-2 py-1 bg-blue-600 rounded hover:bg-blue-700 text-sm';
-        copyBtn.addEventListener('click', () => {
-          navigator.clipboard.writeText(dork).then(() => {
-            copyBtn.textContent = 'Copied!';
-            setTimeout(() => (copyBtn.textContent = 'Copy'), 1500);
-          });
+        remBtn.addEventListener('click', () => {
+          state.files.splice(idx,1);
+          state.dorks = state.dorks.filter(d => d.file !== f.name);
+          filterDorks(searchEl.value.trim());
+          renderFiles();
+          renderDorks();
         });
-
-        left.appendChild(checkbox);
-        left.appendChild(link);
-
-        container.appendChild(left);
-        container.appendChild(copyBtn);
-        resultDiv.appendChild(container);
+        fileListEl.appendChild(li);
       });
     }
 
-    // Generate new dorks
-    generateBtn.addEventListener('click', () => {
-      const domain = domainInput.value.trim();
-      if (!domain) {
-        alert('Please enter a domain or subdomain!');
+    function renderDorks(){
+      dorkListEl.innerHTML = '';
+      if(!state.filtered.length){
+        dorkListEl.innerHTML = `<div class='p-6 text-sm text-slate-500'>No dorks to show. Adjust filters or load files.</div>`;
         return;
       }
+      state.filtered.forEach((d) => {
+        const row = document.createElement('div');
+        row.className = 'p-3 hover:bg-slate-50 flex items-start gap-3';
+        const checked = Boolean(state.checked[d.id]);
+        row.innerHTML = `
+          <input type="checkbox" class="mt-1 h-4 w-4" ${checked?'checked':''} aria-label="mark done" />
+          <div class='flex-1 cursor-pointer'>
+            <div class='text-sm'>${escapeHtml(d.text)}</div>
+            <div class='mt-1 text-[11px] text-slate-500'>${d.file} — line ${d.line}</div>
+          </div>`;
+        const cb = row.querySelector('input[type="checkbox"]');
+        const body = row.querySelector('div.flex-1');
+        cb.addEventListener('change', () => {
+          if(cb.checked) state.checked[d.id] = true; else delete state.checked[d.id];
+          saveChecked(); updateProgress();
+        });
+        body.addEventListener('click', () => selectDork(d));
+        dorkListEl.appendChild(row);
+      });
+    }
 
-      const states = {};
-      saveProgress({ domain, states });
-      renderDorks(domain, states);
-    });
+    // Fixed ampersand escape
+    function escapeHtml(s){
+      return s.replace(/[&<>\"']/g, c => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      }[c]));
+    }
 
-    // Clear button
-    clearBtn.addEventListener('click', () => {
-      localStorage.removeItem(STORAGE_KEY);
-      resultDiv.innerHTML = '';
-      domainInput.value = '';
-    });
+    function selectDork(d){
+      state.selected = d;
+      const domain = domainEl.value.trim();
+      const query = (domain ? `site:${domain} ` : '') + d.text;
+      previewQuery.textContent = query;
+      const g = new URL('https://www.google.com/search'); g.searchParams.set('q', query); g.searchParams.set('hl','en');
+      const b = new URL('https://www.bing.com/search');   b.searchParams.set('q', query);
+      openGoogle.href = g.toString(); openBing.href = b.toString();
+      previewCard.classList.remove('hidden');
+    }
 
-    // Load on page load
-    window.addEventListener('load', () => {
-      const saved = loadProgress();
-      if (saved?.domain) {
-        domainInput.value = saved.domain;
-        renderDorks(saved.domain, saved.states || {});
+    // ---------- Loading ----------
+    async function loadLocalManifest(){
+      try{
+        const res = await fetch('dorks/manifest.json', {cache:'no-store'});
+        if(res.ok){
+          const names = await res.json();
+          if(Array.isArray(names) && names.length){
+            await loadLocalFiles(names);
+            return true;
+          }
+        }
+      }catch(e){
+        console.warn('manifest load failed', e);
       }
+      return false;
+    }
+
+    async function loadLocalFiles(names){
+      for(const name of names){
+        const url = `dorks/${name}`;
+        try{
+          const res = await fetch(url, {cache:'no-store'});
+          if(!res.ok) continue;
+          const text = await res.text();
+          addFile({name, source:'local', content:text});
+        }catch(e){
+          console.warn('failed to fetch', url, e);
+        }
+      }
+      finalizeLoad();
+    }
+
+    async function loadFromGitHub(){
+      const owner = byId('owner').value.trim() || inferOwner();
+      const repo  = byId('repo').value.trim()  || inferRepo();
+      const branch= byId('branch').value.trim()|| 'main';
+      if(!owner || !repo){ alert('Need GitHub owner and repo.'); return; }
+      const dirApi = `https://api.github.com/repos/${owner}/${repo}/contents/dorks?ref=${encodeURIComponent(branch)}`;
+      const listRes = await fetch(dirApi);
+      if(!listRes.ok){ alert('Could not list dorks/ via GitHub API.'); return; }
+      const entries = await listRes.json();
+      const files = entries.filter(x => x.type === 'file' && /\.(dorks|txt)$/i.test(x.name));
+      for(const f of files){
+        const res = await fetch(f.download_url);
+        if(!res.ok) continue;
+        const text = await res.text();
+        addFile({name: f.name, source:'github', content: text});
+      }
+      finalizeLoad();
+    }
+
+    function inferOwner(){
+      const h = location.hostname; const p = location.pathname.split('/').filter(Boolean);
+      if(h.endsWith('github.io') && p.length){ return h.replace('.github.io',''); }
+      return '';
+    }
+    function inferRepo(){ const p = location.pathname.split('/').filter(Boolean); return p[0] || ''; }
+
+    function addFile(file){
+      if(state.files.some(f => f.name === file.name && f.source === file.source)) return;
+      state.files.push(file);
+      const lines = file.content.split(/\r?\n/);
+      const dorks = lines.map((t,i)=>({file:file.name, line:i+1, text:t.trim()})).filter(x=>x.text.length>0);
+      dorks.forEach(d => d.id = idFor(d));
+      state.dorks.push(...dorks);
+    }
+    function finalizeLoad(){
+      renderFiles(); filterDorks(searchEl.value.trim()); renderDorks();
+    }
+
+    // ---------- Upload ----------
+    byId('fileInput').addEventListener('change', async (ev) => {
+      const files = Array.from(ev.target.files || []);
+      for (const f of files){
+        const text = await f.text();
+        addFile({name: f.name, source:'upload', content: text});
+      }
+      finalizeLoad(); ev.target.value = '';
     });
 
-    // Support Enter key
-    domainInput.addEventListener('keydown', e => {
-      if (e.key === 'Enter') generateBtn.click();
+    // ---------- Events ----------
+    byId('loadLocal').addEventListener('click', loadLocalManifest);
+    byId('loadGh').addEventListener('click', loadFromGitHub);
+    searchEl.addEventListener('input', () => { filterDorks(searchEl.value.trim()); renderDorks(); });
+    statusFilterEl.addEventListener('change', () => { filterDorks(searchEl.value.trim()); renderDorks(); });
+    markVisibleDoneBtn.addEventListener('click', () => { state.filtered.forEach(d => state.checked[d.id]=true); saveChecked(); updateProgress(); renderDorks(); });
+    markVisibleTodoBtn.addEventListener('click', () => { state.filtered.forEach(d => delete state.checked[d.id]); saveChecked(); updateProgress(); renderDorks(); });
+
+    // ---------- Auto-load on GitHub Pages ----------
+    document.addEventListener('DOMContentLoaded', async () => {
+      const ok = await loadLocalManifest();
+      if(!ok){
+        // If running from file:// or manifest missing, show a hint in Column 2
+        if(location.protocol === 'file:'){
+          dorkListEl.innerHTML = `<div class="p-6 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded">
+            Open this page over HTTP (e.g., GitHub Pages) so the browser can fetch <code>dorks/</code> files.
+            Or use “Add files…” to load local .dorks/.txt here.
+          </div>`;
+        }
+      }
+      updateProgress();
     });
   </script>
 
+  <!-- Embedded Google Dorker script (IIFE to avoid globals) -->
+  <script>
+    (() => {
+      const dorks = [
+        'site:{domain} intitle:"index of"',
+        'site:{domain} inurl:admin',
+        'site:{domain} filetype:env',
+        'site:{domain} intext:"password"',
+        'site:{domain} inurl:login',
+        'site:{domain} ext:sql',
+        'site:{domain} ext:log',
+        'site:{domain} ext:conf',
+        'site:{domain} inurl:"php?id="',
+        'site:{domain} intitle:"login page"',
+        'site:{domain} inurl:"/config"',
+        'site:{domain} inurl:"/backup"',
+        'site:{domain} "sql syntax near"',
+        'site:{domain} "Warning: mysql_"',
+        'site:{domain} "Fatal error"',
+        'site:{domain} "Index of /"',
+        'site:{domain} inurl:"/shell"',
+        'site:{domain} intitle:"Dashboard"',
+        'site:{domain} "internal only"',
+        'site:{domain} "confidential"',
+        'site:{domain} filetype:log',
+        'site:{domain} filetype:conf',
+        'site:{domain} filetype:ini',
+        'site:{domain} filetype:db',
+        'site:{domain} filetype:bak',
+        'site:{domain} filetype:backup',
+        'site:{domain} filetype:json',
+        'site:{domain} filetype:xml',
+        'site:{domain} filetype:sql',
+        'site:{domain} filetype:env',
+        'site:{domain} intext:"credentials"',
+        'site:{domain} intext:"secrets"',
+        'site:{domain} intext:"apikey"',
+        'site:{domain} intext:"token"',
+        'site:{domain} intext:"private key"',
+        'site:{domain} inurl:cpanel',
+        'site:{domain} inurl:dashboard',
+        'site:{domain} inurl:portal',
+        'site:{domain} inurl:internal',
+        'site:{domain} inurl:ftp',
+        'site:{domain} inurl:dev',
+        'site:{domain} inurl:test',
+        'site:{domain} "Authorization: Basic"',
+        'site:{domain} "X-Powered-By: PHP"',
+        'site:{domain} "set-cookie"',
+        'site:{domain} "PHPSESSID"',
+        'site:{domain} intext:"mysql_fetch_array()"',
+        'site:{domain} intext:"You have an error in your SQL syntax"',
+        'site:{domain} intext:"ORA-00933"',
+        'site:{domain} intext:"Syntax error"',
+        'site:{domain} intext:"Warning:"',
+        'site:{domain} intext:"Notice:"',
+        'site:{domain} intext:"Fatal error"',
+        'site:{domain} inurl:signin',
+        'site:{domain} inurl:auth',
+        'site:{domain} inurl:user',
+        'site:{domain} intitle:"signin"',
+        'site:{domain} intitle:"auth"',
+        'site:{domain} intitle:"user"',
+        'site:{domain} intitle:"control panel"',
+        'site:{domain} "site administration"',
+        'site:{domain} "Restricted Area"',
+        'site:{domain} intitle:"Welcome to nginx!"',
+        'site:{domain} intitle:"Apache2 Ubuntu Default Page"',
+        'site:{domain} intitle:"Setup"',
+        'site:{domain} intitle:"Configuration"',
+        'site:{domain} "Database error"',
+        'site:{domain} "Unexpected token"',
+        'site:{domain} intitle:"phpinfo()"',
+        'site:{domain} "connect.php"',
+        'site:{domain} "db_connect"',
+        'site:{domain} intitle:"webmail"',
+        'site:{domain} "web.config"',
+        'site:{domain} filetype:htpasswd',
+        'site:{domain} filetype:htaccess',
+        'site:{domain} "root:x"',
+        'site:{domain} "admin login"',
+        'site:{domain} "site backup"',
+        'site:{domain} intitle:"view source"',
+        'site:{domain} inurl:debug',
+        'site:{domain} inurl:trace',
+        'site:{domain} inurl:dump',
+        'site:{domain} "test environment"',
+        'site:{domain} "Do not distribute"',
+        'site:{domain} "for development purposes only"',
+        'site:{domain} "NOT FOR PUBLIC RELEASE"',
+        'site:{domain} "do not disclose"',
+        'site:{domain} "confidential information"',
+        'site:{domain} "sensitive data"',
+        'site:{domain} inurl:dev',
+        'site:{domain} inurl:staging',
+        'site:{domain} inurl:debug',
+        'site:{domain} inurl:error',
+        'site:{domain} inurl:trace',
+        'site:{domain} inurl:upload',
+        'site:{domain} inurl:download',
+        'site:{domain} inurl:git',
+        'site:{domain} inurl:svn',
+        'site:{domain} inurl:repo',
+        'site:{domain} inurl:.git',
+        'site:{domain} intitle:"git repository"',
+        'site:{domain} intitle:"svn repository"',
+        'site:{domain} "DATABASE_URL"',
+        'site:{domain} "MAIL_HOST"',
+        'site:{domain} "MAIL_PASSWORD"',
+        'site:{domain} "APP_SECRET"',
+        'site:{domain} "AWS_SECRET_ACCESS_KEY"',
+        'site:{domain} "AWS_ACCESS_KEY_ID"',
+        'site:{domain} "Authorization"',
+        'site:{domain} "Bearer token"',
+        'site:{domain} "jwt token"',
+        'site:{domain} "api_key"',
+        'site:{domain} "secret_key"',
+        'site:{domain} "client_secret"',
+        'site:{domain} "credentials.json"',
+        'site:{domain} "config.json"',
+        'site:{domain} "docker-compose.yml"',
+        'site:{domain} "kubeconfig"',
+        'site:{domain} filetype:bak',
+        'site:{domain} filetype:old',
+        'site:{domain} filetype:backup',
+        'site:{domain} filetype:swp',
+        'site:{domain} filetype:tmp',
+        'site:{domain} "index of /admin"',
+        'site:{domain} "index of /backup"',
+        'site:{domain} "index of /uploads"',
+        'site:{domain} "index of /db"',
+        'site:{domain} "index of /files"',
+        'site:{domain} "index of /conf"',
+        'site:{domain} "index of /env"',
+        'site:{domain} "index of /logs"',
+        'site:{domain} inurl:readme',
+        'site:{domain} intitle:"readme"',
+        'site:{domain} intitle:"to-do"',
+        'site:{domain} intitle:"changelog"',
+        'site:{domain} intitle:"bugtracker"',
+        'site:{domain} intitle:"issue tracker"',
+        'site:{domain} intitle:"gitlab"',
+        'site:{domain} intitle:"jenkins"',
+        'site:{domain} intitle:"kibana"',
+        'site:{domain} intitle:"grafana"',
+        'site:{domain} intitle:"dashboard"',
+        'site:{domain} intitle:"login"',
+        'site:{domain} intitle:"signin"',
+        'site:{domain} inurl:panel',
+        'site:{domain} inurl:manage',
+        'site:{domain} inurl:control',
+        'site:{domain} intitle:"remote access"',
+        'site:{domain} intitle:"vpn login"',
+        'site:{domain} intitle:"ssh login"',
+        'site:{domain} intitle:"radmin"',
+        'site:{domain} intitle:"vnc viewer"',
+        'site:{domain} intitle:"Apache Status"',
+        'site:{domain} intitle:"Tomcat Manager"',
+        'site:{domain} intitle:"Jenkins Dashboard"',
+        'site:{domain} intitle:"Development Server"',
+        'site:{domain} intitle:"Open Redirect"',
+        'site:{domain} inurl:"redirect="',
+        'site:{domain} inurl:"url="',
+        'site:{domain} inurl:"next="',
+        'site:{domain} inurl:"data="',
+        'site:{domain} "parameter tampering"',
+        'site:{domain} inurl:report',
+        'site:{domain} "vulnerability report"',
+        'site:{domain} "leak"',
+        'site:{domain} "exposed"',
+        'site:{domain} "intitle:config file"',
+        'site:{domain} "intitle:settings"',
+        'site:{domain} "intitle:admin settings"',
+        'site:{domain} "intitle:internal config"',
+        'site:{domain} intitle:"documentation"',
+        'site:{domain} intitle:"api reference"',
+        'site:{domain} intitle:"api docs"',
+        'site:{domain} intitle:"REST API"',
+        'site:{domain} "production environment"',
+        'site:{domain} "sandbox"',
+        'site:{domain} "test API"',
+        'site:{domain} "admin panel"',
+        'site:{domain} "site panel"',
+        'site:{domain} "management console"',
+        'site:{domain} "Monitoring Dashboard"',
+      ];
+
+      const domainInput = document.getElementById('domainInput');
+      const generateBtn = document.getElementById('generateBtn');
+      const clearBtn = document.getElementById('clearBtn');
+      const resultDiv = document.getElementById('result');
+
+      const STORAGE_KEY = "google_dorker_data";
+
+      function saveProgress(data) {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
+      }
+      function loadProgress() {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          return saved ? JSON.parse(saved) : null;
+        } catch { return null; }
+      }
+
+      function renderDorks(domain, savedStates = {}) {
+        resultDiv.innerHTML = '';
+        dorks.forEach((template) => {
+          const dork = template.replace('{domain}', domain);
+          const url = `https://www.google.com/search?q=${encodeURIComponent(dork)}`;
+          const checked = savedStates[dork]?.checked || false;
+
+          const container = document.createElement('div');
+          container.className = 'flex items-center justify-between px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition';
+
+          const left = document.createElement('div');
+          left.className = 'flex items-center gap-2 flex-grow break-words min-w-0';
+
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.checked = checked;
+          checkbox.className = 'h-4 w-4';
+          checkbox.addEventListener('change', () => {
+            savedStates[dork] = { checked: checkbox.checked };
+            saveProgress({ domain, states: savedStates });
+          });
+
+          const link = document.createElement('a');
+          link.href = url;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.textContent = dork;
+          link.className = 'text-indigo-600 hover:underline flex-grow truncate';
+
+          const copyBtn = document.createElement('button');
+          copyBtn.textContent = 'Copy';
+          copyBtn.className = 'ml-3 px-2 py-1 rounded-lg bg-slate-900 text-white text-xs hover:bg-slate-800';
+          copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(dork).then(() => {
+              copyBtn.textContent = 'Copied!';
+              setTimeout(() => (copyBtn.textContent = 'Copy'), 1200);
+            });
+          });
+
+          left.appendChild(checkbox);
+          left.appendChild(link);
+
+          container.appendChild(left);
+          container.appendChild(copyBtn);
+          resultDiv.appendChild(container);
+        });
+      }
+
+      function init() {
+        if (!domainInput || !generateBtn || !clearBtn || !resultDiv) return;
+
+        generateBtn.addEventListener('click', () => {
+          const domain = domainInput.value.trim();
+          if (!domain) {
+            alert('Please enter a domain or subdomain!');
+            return;
+          }
+          const states = {};
+          saveProgress({ domain, states });
+          renderDorks(domain, states);
+        });
+
+        clearBtn.addEventListener('click', () => {
+          localStorage.removeItem(STORAGE_KEY);
+          resultDiv.innerHTML = '';
+          domainInput.value = '';
+        });
+
+        window.addEventListener('load', () => {
+          const saved = loadProgress();
+          if (saved?.domain) {
+            domainInput.value = saved.domain;
+            renderDorks(saved.domain, saved.states || {});
+          }
+        });
+
+        domainInput.addEventListener('keydown', e => {
+          if (e.key === 'Enter') generateBtn.click();
+        });
+      }
+
+      init();
+    })();
+  </script>
+  <footer>
+  <div class="px-4 py-2 border-t border-slate-200 text-[11px] text-slate-500 text-center">
+            Made with ❤️ by H4K2LIV3 Academy —
+            <a href="https://hacktolive.net" target="_blank" rel="noopener" class="text-indigo-600 hover:underline">Visit Us</a>
+          </div>
+</footer>
 </body>
 </html>

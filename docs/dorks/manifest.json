@@ -1,0 +1,16 @@
+[
+  "advisories_and_vulnerabilities.dorks",
+  "network_or_vulnerability_data.dorks",
+  "pages_containing_login_portals.dorks",
+  "sensitive_directories.dorks",
+  "sensitive_online_shopping_info.dorks",
+  "error_messages.dorks",
+  "files_containing_juicy_info.dorks",
+  "files_containing_passwords.dorks",
+  "files_containing_usernames.dorks",
+  "footholds.dorks",
+  "various_online_devices.dorks",
+  "vulnerable_files.dorks",
+  "vulnerable_servers.dorks",
+  "web_server_detection.dorks"
+]
